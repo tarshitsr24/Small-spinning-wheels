@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Immortal Infinite Grid</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="hypnoCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('hypnoCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configuration
+        const BASE_WHEEL_SIZE = 130; // The standard size of a wheel before scaling
+
+        // Sync Mechanics (Safely locked)
+        let rotationAngle = 0;
+        let colorProgress = 0;
+        let depthProgress = 0;
+
+        const rotationSpeed = 0.05;
+        const colorCycleSpeed = 0.002;
+        const depthSpeed = 0.02;
+
+        function resizeCanvas() {
+            // Set canvas internal resolution to match screen perfectly
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function drawGrid() {
+            // Clear the viewport every frame
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate the interactive dynamic depth scale (pulsing toward/away)
+            // Oscillates between 0.5 (far away) and 2.2 (huge/in your face)
+            const depthScale = 1.35 + Math.sin(depthProgress) * 0.85;
+
+            // Adjust sizing based on the scale so the screen stays packed
+            const currentWheelSize = BASE_WHEEL_SIZE * depthScale;
+
+            // Calculate grid layout dynamically based on current zoom scale
+            const cols = Math.ceil(canvas.width / currentWheelSize) + 2;
+            const rows = Math.ceil(canvas.height / currentWheelSize) + 2;
+
+            const radius = (currentWheelSize / 2) * 0.95;
+            const totalSlices = 12;
+            const sliceAngle = (Math.PI * 2) / totalSlices;
+
+            // Loop through columns and rows, drawing everything onto the single canvas
+            for (let c = -1; c < cols; c++) {
+                for (let r = -1; r < rows; r++) {
+                    // Center coordinates for this specific wheel
+                    const x = c * currentWheelSize + (currentWheelSize / 2);
+                    const y = r * currentWheelSize + (currentWheelSize / 2);
+
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotationAngle);
+
+                    // Draw the individual wheel slices
+                    for (let i = 0; i < totalSlices; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.arc(0, 0, radius, i * sliceAngle, (i + 1) * sliceAngle);
+                        ctx.closePath();
+
+                        if (i % 2 === 0) {
+                            if (colorProgress === 0) {
+                                ctx.fillStyle = '#000000';
+                            } else {
+                                const hue = (colorProgress * 360) % 360;
+                                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                            }
+                        } else {
+                            if (colorProgress === 0) {
+                                ctx.fillStyle = '#ffffff';
+                            } else {
+                                const hue = ((colorProgress * 360) + 180) % 360;
+                                ctx.fillStyle = `hsl(${hue}, 100%, 45%)`;
+                            }
+                        }
+                        ctx.fill();
+                    }
+
+                    // Draw the center hub cap
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius * 0.15, 0, Math.PI * 2);
+                    ctx.fillStyle = colorProgress === 0 ? '#ffffff' : '#000000';
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+            }
+        }
+
+        function animate() {
+            // Keep variables tracking safely bounded to prevent browser memory drops
+            rotationAngle = (rotationAngle + rotationSpeed) % (Math.PI * 2);
+            colorProgress = (colorProgress + colorCycleSpeed) % 1.0;
+            depthProgress = (depthProgress + depthSpeed) % (Math.PI * 2);
+
+            drawGrid();
+            requestAnimationFrame(animate);
+        }
+
+        // Initialize and lock listeners
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        animate();
+    </script>
+</body>
+
+</html>
